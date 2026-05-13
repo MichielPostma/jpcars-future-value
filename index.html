@@ -216,9 +216,46 @@
     border-top-style: dashed;
   }
   @media (max-width: 540px) {
-    header.top { flex-direction: row; align-items: center; }
+    /* Stack header: title block on top, dropdown full-width below.
+       Fix for "no lines visible" bug: prior flex-row + select min-width:280px
+       squeezed the title to ~39px wide, making the header 377px tall and
+       pushing the chart below the viewport on phones. */
+    header.top {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .titles { width: 100%; }
+    .graph-picker { width: 100%; }
+    .graph-picker select {
+      width: 100%;
+      min-width: 0;
+      font-size: 17px;
+      padding: 12px 48px 12px 16px;
+    }
+    .graph-picker::after { right: 18px; }
+
+    /* Chart can shrink a bit on tall narrow viewports, keeping subplots readable */
+    .chart { height: clamp(360px, 55vh, 520px); }
+
+    /* Legend: stack so logo gets its own row with breathing room above */
+    .legend {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px 20px;
+      margin-top: 20px;
+    }
+    .legend .logo-wrap {
+      width: 100%;
+      justify-content: flex-end;
+      padding-top: 20px;
+    }
+    /* Smaller logo on mobile */
+    .legend .logo-wrap .jp-logo {
+      width: clamp(96px, 25vw, 130px);
+    }
     .jp-logo { width: 80px; }
-    .legend { gap: 12px 20px; }
   }
   /* Custom hover label */
   .ch-hover {
