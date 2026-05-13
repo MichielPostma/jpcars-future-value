@@ -17,9 +17,9 @@
     --grid: rgba(255,255,255,0.10);
     --axis: rgba(255,255,255,0.55);
     --today: rgba(180,180,180,0.55);
-    --c1: #3DD958;
-    --c2: #009ad8;
-    --c3: #ffc200;
+    --c1: #009ad8;
+    --c2: #ffc200;
+    --c3: #3DD958;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -35,8 +35,20 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 32px clamp(16px, 4vw, 48px) 48px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
+  .chart-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    min-height: 0;
+  }
+  .chart-wrap > .chart { width: 100%; }
   header.top {
+    flex: 0 0 auto;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -45,7 +57,7 @@
   }
   .titles { flex: 1; min-width: 0; }
   h1 {
-    font-size: clamp(20px, 2.4vw, 28px);
+    font-size: clamp(25px, 3vw, 35px);
     font-weight: 600;
     margin: 0 0 6px 0;
     letter-spacing: -0.01em;
@@ -66,6 +78,55 @@
     width: clamp(90px, 10vw, 140px);
     height: auto;
     display: block;
+  }
+  .graph-picker {
+    flex: 0 0 auto;
+    position: relative;
+  }
+  .graph-picker select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 8px;
+    padding: 14px 56px 14px 22px;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    min-width: 280px;
+    transition: border-color 0.15s ease;
+  }
+  .graph-picker select:hover {
+    border-color: #ffffff;
+  }
+  .graph-picker select:focus,
+  .graph-picker select:focus-visible,
+  .graph-picker select:active {
+    outline: none;
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: none;
+  }
+  .graph-picker::after {
+    content: "";
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    width: 17px;
+    height: 11px;
+    margin-top: -6px;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23ffffff' stroke-width='1.14' stroke-linecap='round' stroke-linejoin='round'><polyline points='1,1 6,6 11,1'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 17px 11px;
+  }
+  .graph-picker select option {
+    background: #1a1a1a;
+    color: #ffffff;
   }
   .chart {
     position: relative;
@@ -92,7 +153,8 @@
     z-index: 1;
   }
   .legend {
-    margin-top: 18px;
+    flex: 0 0 auto;
+    margin-top: 24px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -103,6 +165,12 @@
     font-weight: 400;
     font-size: clamp(13px, 1.2vw, 15px);
     color: #ffffff;
+  }
+  .legend .left-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 28px;
   }
   .legend .models {
     display: flex;
@@ -116,6 +184,9 @@
     align-items: center;
     gap: 10px 16px;
     color: #ffffff;
+  }
+  .legend .logo-wrap .jp-logo {
+    width: clamp(136px, 13.6vw, 187px);
   }
   .legend .item {
     display: inline-flex;
@@ -133,7 +204,7 @@
     display: inline-block;
     width: 26px;
     height: 0;
-    border-top: 2px solid #ffffff;
+    border-top: 2px solid rgba(255,255,255,0.55);
   }
   .legend .line-sample.dashed {
     border-top-style: dashed;
@@ -143,7 +214,7 @@
     .jp-logo { width: 80px; }
     .legend { gap: 12px 20px; }
   }
-  /* Custom hover label — replaces Plotly's built in tooltip */
+  /* Custom hover label */
   .ch-hover {
     position: absolute;
     background: #474747;
@@ -180,32 +251,49 @@
     border-radius: 50%;
     flex: 0 0 7px;
   }
-  /* Plotly's own hover label is disabled in favour of our custom one. */
   .chart .hoverlayer { display: none !important; }
-  /* Hide the invisible markers used as hover triggers. */
   .chart .scatterlayer .points path { display: none !important; }
+  /* Subtle fade when switching between views via dropdown or arrow keys */
+  .view-fade {
+    transition: opacity 140ms ease;
+    will-change: opacity;
+  }
+  .view-fade.is-fading {
+    opacity: 0;
+  }
 </style>
 </head>
 <body>
 <div class="page">
   <header class="top">
-    <div class="titles">
-      <h1>Future value valuation comparison</h1>
-      <p class="subtitle">Realised and forecast prices in one chart</p>
+    <div class="titles view-fade">
+      <h1 id="pageTitle">Price forecast Kia Picanto</h1>
+      <p class="subtitle" id="pageSubtitle">Demo of our latest data model on realised and forecast prices</p>
+    </div>
+    <div class="graph-picker">
+      <select id="graphPicker" aria-label="Select graph">
+        <option value="picanto" selected>Kia Picanto</option>
+        <option value="tesla">Tesla Model 3</option>
+        <option value="comparison">Comparison graph</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="chart-wrap">
+    <div id="chart" class="chart view-fade" role="img" aria-label="Future value comparison chart"></div>
+  </div>
+  <div id="customHover" class="ch-hover" aria-hidden="true"></div>
+
+  <div class="legend" aria-label="Legend">
+    <div class="left-group view-fade">
+      <div class="models" id="legendModels"></div>
+      <div class="style-hint">
+        <span class="item"><span class="line-sample"></span>Realised</span>
+        <span class="item"><span class="line-sample dashed"></span>Forecast</span>
+      </div>
     </div>
     <div class="logo-wrap"><svg class="jp-logo" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 60 15">
-  <!-- Generator: Adobe Illustrator 29.5.0, SVG Export Plug-In . SVG Version: 2.1.0 Build 137)  -->
-  <defs>
-    <style>
-      .st0 {
-        fill: #fff;
-      }
-
-      .st1 {
-        fill: #3cd958;
-      }
-    </style>
-  </defs>
+  <defs><style>.st0{fill:#fff;}.st1{fill:#3cd958;}</style></defs>
   <g>
     <path class="st0" d="M31.27,3.47v4.94c0,.32-.05.61-.15.87-.1.26-.25.48-.45.67-.2.18-.44.33-.72.43-.28.1-.6.15-.96.15s-.65-.05-.91-.14c-.26-.09-.49-.23-.68-.4-.19-.17-.34-.38-.46-.62-.12-.24-.2-.5-.25-.8l1.41-.28c.11.6.4.91.87.91.22,0,.41-.07.56-.21s.23-.36.23-.66v-3.65h0v-1.21h1.51Z"/>
     <path class="st0" d="M32.76,10.42V3.47h3.29c.33,0,.62.05.88.16s.48.26.66.45c.18.19.32.43.42.7.1.28.15.58.15.9s-.05.63-.15.91c-.1.27-.24.5-.42.7-.18.19-.4.34-.66.45s-.55.16-.88.16h-1.77v2.51h-1.51ZM34.28,6.6h1.59c.23,0,.4-.06.53-.17.13-.12.19-.29.19-.51v-.44c0-.23-.06-.4-.19-.51-.13-.12-.31-.17-.53-.17h-1.59v1.81Z"/>
@@ -217,26 +305,11 @@
   </g>
   <path class="st1" d="M15.45,0s-4.35,7.37-5.95,10.4c-1.07,2.01-3.05,4.03-5.88,3.99-1.23-.02-2.77-.54-3.62-1.29l1.58-2.79c.99.85,3.43.95,4.32-.42s4.02-6.81,4.02-6.81h-4.16L7.56.09c-.09,0,7.89-.09,7.89-.09ZM18.51,5.85l-2.19,3.29h-3.65l-1.59,2.8h7.02l4.17-5.98L17.85.41l-1.76,2.91,2.41,2.52Z"/>
 </svg></div>
-  </header>
-
-  <div id="chart" class="chart" role="img" aria-label="Future value comparison chart"></div>
-  <div id="customHover" class="ch-hover" aria-hidden="true"></div>
-
-  <div class="legend" aria-label="Legend">
-    <div class="models">
-      <span class="item"><span class="dot" style="background:#3DD958"></span>Volkswagen Golf Petrol</span>
-      <span class="item"><span class="dot" style="background:#009ad8"></span>Kia Niro Hybrid</span>
-      <span class="item"><span class="dot" style="background:#ffc200"></span>Tesla Model 3</span>
-    </div>
-    <div class="style-hint">
-      <span class="item"><span class="line-sample"></span>Realised</span>
-      <span class="item"><span class="line-sample dashed"></span>Forecast</span>
-    </div>
   </div>
 </div>
 
 <script>
-const DATA = [{"label": "Volkswagen Golf Petrol", "color": "#3DD958", "solid": [{"date": "2023-01-15", "price": 19350.70967288543}, {"date": "2023-02-15", "price": 19318.115889200864}, {"date": "2023-03-15", "price": 19358.466982745413}, {"date": "2023-04-15", "price": 19378.073253578248}, {"date": "2023-05-15", "price": 19027.721287502256}, {"date": "2023-06-15", "price": 19485.726606053027}, {"date": "2023-07-15", "price": 19436.7023560199}, {"date": "2023-08-15", "price": 19822.587460203733}, {"date": "2023-09-15", "price": 20285.02571293634}, {"date": "2023-10-15", "price": 20376.269324401306}, {"date": "2023-11-15", "price": 20698.4099371969}, {"date": "2023-12-15", "price": 21046.737683386054}, {"date": "2024-01-15", "price": 21171.055589348718}, {"date": "2024-02-15", "price": 21410.36358736898}, {"date": "2024-03-15", "price": 21635.663212717012}, {"date": "2024-04-15", "price": 21934.327694479576}, {"date": "2024-05-15", "price": 22390.78024544087}, {"date": "2024-06-15", "price": 22905.84120075426}, {"date": "2024-07-15", "price": 23578.03137291018}, {"date": "2024-08-15", "price": 23788.048805358634}, {"date": "2024-09-15", "price": 23859.92648902788}, {"date": "2024-10-15", "price": 23949.9413381751}, {"date": "2024-11-15", "price": 23835.776280245478}, {"date": "2024-12-15", "price": 23810.42406627696}, {"date": "2025-01-15", "price": 23726.947025121808}, {"date": "2025-02-15", "price": 23801.641409585423}, {"date": "2025-03-15", "price": 24089.06201123527}, {"date": "2025-04-15", "price": 24378.24562035173}, {"date": "2025-05-15", "price": 24395.462938884877}, {"date": "2025-06-15", "price": 24273.246498411692}, {"date": "2025-07-15", "price": 24333.71005312399}, {"date": "2025-08-15", "price": 24337.155876099154}, {"date": "2025-09-15", "price": 24175.938373066077}, {"date": "2025-10-15", "price": 24285.846019344564}, {"date": "2025-11-15", "price": 24140.88660878389}, {"date": "2025-12-15", "price": 24161.283224058192}, {"date": "2026-01-15", "price": 24161.79719502443}, {"date": "2026-02-15", "price": 23816.399298347555}, {"date": "2026-03-15", "price": 23993.795655276608}, {"date": "2026-04-15", "price": 23992.89175873626}], "forecast": [{"date": "2023-01-15", "price": 19444.94476981887}, {"date": "2030-01-15", "price": 32381.078827455298}]}, {"label": "Kia Niro Hybrid", "color": "#009ad8", "solid": [{"date": "2023-01-15", "price": 17720.067132474876}, {"date": "2023-02-15", "price": 17966.782341850674}, {"date": "2023-03-15", "price": 18084.899817384314}, {"date": "2023-04-15", "price": 17999.98907189216}, {"date": "2023-05-15", "price": 18130.992115939476}, {"date": "2023-06-15", "price": 18127.571539296165}, {"date": "2023-07-15", "price": 18080.890839231768}, {"date": "2023-08-15", "price": 18220.800869246403}, {"date": "2023-09-15", "price": 18363.78334584906}, {"date": "2023-10-15", "price": 18429.587681354984}, {"date": "2023-11-15", "price": 18496.19487301699}, {"date": "2023-12-15", "price": 18516.40064971114}, {"date": "2024-01-15", "price": 18315.097314164337}, {"date": "2024-02-15", "price": 18274.636588380105}, {"date": "2024-03-15", "price": 18216.3425143054}, {"date": "2024-04-15", "price": 18358.05730820998}, {"date": "2024-05-15", "price": 18496.786178644124}, {"date": "2024-06-15", "price": 18525.50634624657}, {"date": "2024-07-15", "price": 18592.95207549542}, {"date": "2024-08-15", "price": 18597.50941271061}, {"date": "2024-09-15", "price": 18469.004898241357}, {"date": "2024-10-15", "price": 18413.595771303695}, {"date": "2024-11-15", "price": 18409.500102083668}, {"date": "2024-12-15", "price": 18373.867664768015}, {"date": "2025-01-15", "price": 18454.981141892993}, {"date": "2025-02-15", "price": 18554.92475544713}, {"date": "2025-03-15", "price": 18570.40383918262}, {"date": "2025-04-15", "price": 18599.959937228847}, {"date": "2025-05-15", "price": 18657.602613347786}, {"date": "2025-06-15", "price": 18699.971264874086}, {"date": "2025-07-15", "price": 18738.552365009964}, {"date": "2025-08-15", "price": 19041.44392008283}, {"date": "2025-09-15", "price": 19319.145054145443}, {"date": "2025-10-15", "price": 19440.17696963179}, {"date": "2025-11-15", "price": 19638.478573156754}, {"date": "2025-12-15", "price": 20803.196212743875}, {"date": "2026-01-15", "price": 21114.69229035145}, {"date": "2026-02-15", "price": 21535.753181820804}, {"date": "2026-03-15", "price": 20363.82291390262}, {"date": "2026-04-15", "price": 20489.906504123053}], "forecast": [{"date": "2023-01-15", "price": 17590.98440704939}, {"date": "2030-01-15", "price": 22713.309975470525}]}, {"label": "Tesla Model 3", "color": "#ffc200", "solid": [{"date": "2023-07-15", "price": 22934.33333950896}, {"date": "2023-08-15", "price": 22486.814197838303}, {"date": "2023-09-15", "price": 22395.779827525315}, {"date": "2023-10-15", "price": 22429.830890562283}, {"date": "2023-11-15", "price": 22092.732160442814}, {"date": "2023-12-15", "price": 21925.337882129505}, {"date": "2024-01-15", "price": 21285.41244986117}, {"date": "2024-02-15", "price": 20950.025808848146}, {"date": "2024-03-15", "price": 20585.27788965736}, {"date": "2024-04-15", "price": 19941.73032959156}, {"date": "2024-05-15", "price": 19358.71884109534}, {"date": "2024-06-15", "price": 18542.369032640225}, {"date": "2024-07-15", "price": 18436.072902273245}, {"date": "2024-08-15", "price": 18979.176107338015}, {"date": "2024-09-15", "price": 19303.326813148808}, {"date": "2024-10-15", "price": 19565.25867346161}, {"date": "2024-11-15", "price": 19496.10983327464}, {"date": "2024-12-15", "price": 19527.621547526007}, {"date": "2025-01-15", "price": 19572.01750462885}, {"date": "2025-02-15", "price": 19701.929142192213}, {"date": "2025-03-15", "price": 20033.438310886577}, {"date": "2025-04-15", "price": 19820.784042383675}, {"date": "2025-05-15", "price": 19817.353343784176}, {"date": "2025-06-15", "price": 19901.759802897795}, {"date": "2025-07-15", "price": 19993.546559214807}, {"date": "2025-08-15", "price": 20332.364588055225}, {"date": "2025-09-15", "price": 20741.9247787713}, {"date": "2025-10-15", "price": 21058.01983860488}, {"date": "2025-11-15", "price": 21169.370664104845}, {"date": "2025-12-15", "price": 21246.06680785309}, {"date": "2026-01-15", "price": 21387.718270550446}, {"date": "2026-02-15", "price": 21395.798257015835}, {"date": "2026-03-15", "price": 21481.178279615124}, {"date": "2026-04-15", "price": 21822.919921046807}], "forecast": [{"date": "2023-07-15", "price": 20914.613054105015}, {"date": "2030-01-15", "price": 19331.710084948438}]}];
+const DATA = [{"label":"Volkswagen Golf Petrol","color":"#009ad8","solid":[{"date":"2023-01-15","price":19350.70967288543},{"date":"2023-02-15","price":19318.115889200864},{"date":"2023-03-15","price":19358.466982745413},{"date":"2023-04-15","price":19378.073253578248},{"date":"2023-05-15","price":19027.721287502256},{"date":"2023-06-15","price":19485.726606053027},{"date":"2023-07-15","price":19436.7023560199},{"date":"2023-08-15","price":19822.587460203733},{"date":"2023-09-15","price":20285.02571293634},{"date":"2023-10-15","price":20376.269324401306},{"date":"2023-11-15","price":20698.4099371969},{"date":"2023-12-15","price":21046.737683386054},{"date":"2024-01-15","price":21171.055589348718},{"date":"2024-02-15","price":21410.36358736898},{"date":"2024-03-15","price":21635.663212717012},{"date":"2024-04-15","price":21934.327694479576},{"date":"2024-05-15","price":22390.78024544087},{"date":"2024-06-15","price":22905.84120075426},{"date":"2024-07-15","price":23578.03137291018},{"date":"2024-08-15","price":23788.048805358634},{"date":"2024-09-15","price":23859.92648902788},{"date":"2024-10-15","price":23949.9413381751},{"date":"2024-11-15","price":23835.776280245478},{"date":"2024-12-15","price":23810.42406627696},{"date":"2025-01-15","price":23726.947025121808},{"date":"2025-02-15","price":23801.641409585423},{"date":"2025-03-15","price":24089.06201123527},{"date":"2025-04-15","price":24378.24562035173},{"date":"2025-05-15","price":24395.462938884877},{"date":"2025-06-15","price":24273.246498411692},{"date":"2025-07-15","price":24333.71005312399},{"date":"2025-08-15","price":24337.155876099154},{"date":"2025-09-15","price":24175.938373066077},{"date":"2025-10-15","price":24285.846019344564},{"date":"2025-11-15","price":24140.88660878389},{"date":"2025-12-15","price":24161.283224058192},{"date":"2026-01-15","price":24161.79719502443},{"date":"2026-02-15","price":23816.399298347555},{"date":"2026-03-15","price":23993.795655276608},{"date":"2026-04-15","price":23992.89175873626}],"forecast":[{"date":"2023-01-15","price":19444.94476981887},{"date":"2030-01-15","price":32381.078827455298}]},{"label":"Kia Niro Hybrid","color":"#ffc200","solid":[{"date":"2023-01-15","price":17720.067132474876},{"date":"2023-02-15","price":17966.782341850674},{"date":"2023-03-15","price":18084.899817384314},{"date":"2023-04-15","price":17999.98907189216},{"date":"2023-05-15","price":18130.992115939476},{"date":"2023-06-15","price":18127.571539296165},{"date":"2023-07-15","price":18080.890839231768},{"date":"2023-08-15","price":18220.800869246403},{"date":"2023-09-15","price":18363.78334584906},{"date":"2023-10-15","price":18429.587681354984},{"date":"2023-11-15","price":18496.19487301699},{"date":"2023-12-15","price":18516.40064971114},{"date":"2024-01-15","price":18315.097314164337},{"date":"2024-02-15","price":18274.636588380105},{"date":"2024-03-15","price":18216.3425143054},{"date":"2024-04-15","price":18358.05730820998},{"date":"2024-05-15","price":18496.786178644124},{"date":"2024-06-15","price":18525.50634624657},{"date":"2024-07-15","price":18592.95207549542},{"date":"2024-08-15","price":18597.50941271061},{"date":"2024-09-15","price":18469.004898241357},{"date":"2024-10-15","price":18413.595771303695},{"date":"2024-11-15","price":18409.500102083668},{"date":"2024-12-15","price":18373.867664768015},{"date":"2025-01-15","price":18454.981141892993},{"date":"2025-02-15","price":18554.92475544713},{"date":"2025-03-15","price":18570.40383918262},{"date":"2025-04-15","price":18599.959937228847},{"date":"2025-05-15","price":18657.602613347786},{"date":"2025-06-15","price":18699.971264874086},{"date":"2025-07-15","price":18738.552365009964},{"date":"2025-08-15","price":19041.44392008283},{"date":"2025-09-15","price":19319.145054145443},{"date":"2025-10-15","price":19440.17696963179},{"date":"2025-11-15","price":19638.478573156754},{"date":"2025-12-15","price":20803.196212743875},{"date":"2026-01-15","price":21114.69229035145},{"date":"2026-02-15","price":21535.753181820804},{"date":"2026-03-15","price":20363.82291390262},{"date":"2026-04-15","price":20489.906504123053}],"forecast":[{"date":"2023-01-15","price":17590.98440704939},{"date":"2030-01-15","price":22713.309975470525}]},{"label":"Tesla Model 3","color":"#3DD958","solid":[{"date":"2023-07-15","price":22934.33333950896},{"date":"2023-08-15","price":22486.814197838303},{"date":"2023-09-15","price":22395.779827525315},{"date":"2023-10-15","price":22429.830890562283},{"date":"2023-11-15","price":22092.732160442814},{"date":"2023-12-15","price":21925.337882129505},{"date":"2024-01-15","price":21285.41244986117},{"date":"2024-02-15","price":20950.025808848146},{"date":"2024-03-15","price":20585.27788965736},{"date":"2024-04-15","price":19941.73032959156},{"date":"2024-05-15","price":19358.71884109534},{"date":"2024-06-15","price":18542.369032640225},{"date":"2024-07-15","price":18436.072902273245},{"date":"2024-08-15","price":18979.176107338015},{"date":"2024-09-15","price":19303.326813148808},{"date":"2024-10-15","price":19565.25867346161},{"date":"2024-11-15","price":19496.10983327464},{"date":"2024-12-15","price":19527.621547526007},{"date":"2025-01-15","price":19572.01750462885},{"date":"2025-02-15","price":19701.929142192213},{"date":"2025-03-15","price":20033.438310886577},{"date":"2025-04-15","price":19820.784042383675},{"date":"2025-05-15","price":19817.353343784176},{"date":"2025-06-15","price":19901.759802897795},{"date":"2025-07-15","price":19993.546559214807},{"date":"2025-08-15","price":20332.364588055225},{"date":"2025-09-15","price":20741.9247787713},{"date":"2025-10-15","price":21058.01983860488},{"date":"2025-11-15","price":21169.370664104845},{"date":"2025-12-15","price":21246.06680785309},{"date":"2026-01-15","price":21387.718270550446},{"date":"2026-02-15","price":21395.798257015835},{"date":"2026-03-15","price":21481.178279615124},{"date":"2026-04-15","price":21822.919921046807}],"forecast":[{"date":"2023-07-15","price":20914.613054105015},{"date":"2030-01-15","price":19331.710084948438}]},{"label":"Kia Picanto","color":"#3DD958","solid":[{"date":"2023-01-15","price":9315.790178198073},{"date":"2023-02-15","price":9439.933421952153},{"date":"2023-03-15","price":9572.121082826015},{"date":"2023-04-15","price":9621.218034744386},{"date":"2023-05-15","price":9765.159204593518},{"date":"2023-06-15","price":9901.50645221053},{"date":"2023-07-15","price":9922.163404386643},{"date":"2023-08-15","price":9846.159169887584},{"date":"2023-09-15","price":9924.175172136407},{"date":"2023-10-15","price":9949.862969857028},{"date":"2023-11-15","price":10027.132654736735},{"date":"2023-12-15","price":10063.53623363188},{"date":"2024-01-15","price":10108.001439124542},{"date":"2024-02-15","price":10176.927780634365},{"date":"2024-03-15","price":10296.030743196963},{"date":"2024-04-15","price":10409.322876104014},{"date":"2024-05-15","price":10459.334360300687},{"date":"2024-06-15","price":10557.782647762404},{"date":"2024-07-15","price":10608.850659287738},{"date":"2024-08-15","price":10695.180303289855},{"date":"2024-09-15","price":10697.06658423969},{"date":"2024-10-15","price":10726.113429784664},{"date":"2024-11-15","price":10793.946356604622},{"date":"2024-12-15","price":10883.165129866113},{"date":"2025-01-15","price":10970.885784985328},{"date":"2025-02-15","price":11043.666940423747},{"date":"2025-03-15","price":11163.299153807799},{"date":"2025-04-15","price":11280.777130220144},{"date":"2025-05-15","price":11421.469325782205},{"date":"2025-06-15","price":11558.602179903171},{"date":"2025-07-15","price":11659.622887933949},{"date":"2025-08-15","price":11642.864737971313},{"date":"2025-09-15","price":11710.485800253806},{"date":"2025-10-15","price":11758.219764683077},{"date":"2025-11-15","price":11790.556502010517},{"date":"2025-12-15","price":11863.558457896206},{"date":"2026-01-15","price":11901.45723035809},{"date":"2026-02-15","price":12002.308622332774},{"date":"2026-03-15","price":12063.872483914687},{"date":"2026-04-15","price":12173.285915780882}],"forecast":[{"date":"2023-01-15","price":9352.686872673283},{"date":"2030-01-15","price":15346.618689669918}],"etr":[{"date":"2023-01-15","value":3.950357507660879},{"date":"2023-02-15","value":4.497880116959064},{"date":"2023-03-15","value":4.719962088072324},{"date":"2023-04-15","value":4.866540880503145},{"date":"2023-05-15","value":4.766590678824721},{"date":"2023-06-15","value":3.9351665351551146},{"date":"2023-07-15","value":3.9158878504672896},{"date":"2023-08-15","value":4.583909124796975},{"date":"2023-09-15","value":4.567753548551641},{"date":"2023-10-15","value":4.174974721941354},{"date":"2023-11-15","value":4.481159420289855},{"date":"2023-12-15","value":4.478267973856209},{"date":"2024-01-15","value":4.624368686868687},{"date":"2024-02-15","value":4.6459780092592595},{"date":"2024-03-15","value":4.790125613994214},{"date":"2024-04-15","value":4.926601080246914},{"date":"2024-05-15","value":4.795052941894744},{"date":"2024-06-15","value":4.681075460487225},{"date":"2024-07-15","value":3.9921875},{"date":"2024-08-15","value":4.118606670472928},{"date":"2024-09-15","value":4.525296482923602},{"date":"2024-10-15","value":4.443320446735395},{"date":"2024-11-15","value":4.361869313482217},{"date":"2024-12-15","value":4.5831238478297305},{"date":"2025-01-15","value":4.59585326953748},{"date":"2025-02-15","value":4.704879263131691},{"date":"2025-03-15","value":4.518475916606759},{"date":"2025-04-15","value":4.278539493293592},{"date":"2025-05-15","value":3.75855947535052},{"date":"2025-06-15","value":3.5525995479047117},{"date":"2025-07-15","value":3.164634146341464},{"date":"2025-08-15","value":3.3885979825456194},{"date":"2025-09-15","value":3.3923488976251237},{"date":"2025-10-15","value":3.5729015794192707},{"date":"2025-11-15","value":3.4291050351113106},{"date":"2025-12-15","value":3.7752712031558184},{"date":"2026-01-15","value":3.5725961538461535},{"date":"2026-02-15","value":4.196917287212747},{"date":"2026-03-15","value":4.482246190720767},{"date":"2026-04-15","value":4.261680560818492}],"stock":[{"date":"2023-01-15","value":144.0},{"date":"2023-02-15","value":133.0},{"date":"2023-03-15","value":133.0},{"date":"2023-04-15","value":152.0},{"date":"2023-05-15","value":166.0},{"date":"2023-06-15","value":203.0},{"date":"2023-07-15","value":214.0},{"date":"2023-08-15","value":206.0},{"date":"2023-09-15","value":224.0},{"date":"2023-10-15","value":196.0},{"date":"2023-11-15","value":161.0},{"date":"2023-12-15","value":140.0},{"date":"2024-01-15","value":102.0},{"date":"2024-02-15","value":95.0},{"date":"2024-03-15","value":124.0},{"date":"2024-04-15","value":112.0},{"date":"2024-05-15","value":114.0},{"date":"2024-06-15","value":95.0},{"date":"2024-07-15","value":128.0},{"date":"2024-08-15","value":114.0},{"date":"2024-09-15","value":112.0},{"date":"2024-10-15","value":103.0},{"date":"2024-11-15","value":111.0},{"date":"2024-12-15","value":118.0},{"date":"2025-01-15","value":112.0},{"date":"2025-02-15","value":114.0},{"date":"2025-03-15","value":115.0},{"date":"2025-04-15","value":128.0},{"date":"2025-05-15","value":148.0},{"date":"2025-06-15","value":148.0},{"date":"2025-07-15","value":164.0},{"date":"2025-08-15","value":166.0},{"date":"2025-09-15","value":163.0},{"date":"2025-10-15","value":154.0},{"date":"2025-11-15","value":155.0},{"date":"2025-12-15","value":140.0},{"date":"2026-01-15","value":132.0},{"date":"2026-02-15","value":142.0},{"date":"2026-03-15","value":132.0},{"date":"2026-04-15","value":148.0}],"subtitle":"Kia \u00b7 Picanto \u00b7 Petrol \u00b7 SmallCar \u00b7 Manual Gear \u00b7 66 hp"}];
 const FONT_FAMILY = "IBM Plex Sans, system-ui, -apple-system, sans-serif";
 const BG = "#000000";
 const GRID = "rgba(255,255,255,0.10)";
@@ -252,8 +325,6 @@ function hexToRgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// Linearly interpolate a sparse forecast (2 endpoints) into monthly points
-// so hover detection works anywhere along the line.
 function interpolateForecast(points) {
   if (points.length < 2) return points;
   const start = new Date(points[0].date);
@@ -271,28 +342,100 @@ function interpolateForecast(points) {
     out.push({ date: iso, price: y });
     cursor.setMonth(cursor.getMonth() + 1);
   }
-  // ensure last endpoint is included
   if (out[out.length - 1].date !== points[points.length - 1].date) {
     out.push(points[points.length - 1]);
   }
   return out;
 }
 
+// Active view: which models are currently displayed + shared y-axis range so
+// switching between views keeps the chart position and scale identical.
+const SHARED_Y_RANGE = [16000, 34000];
+const VIEWS = {
+  comparison: {
+    title: "Price forecast optimised in context",
+    subtitle: "Demo of our latest data model on realised and forecast prices",
+    models: ["Volkswagen Golf Petrol", "Kia Niro Hybrid", "Tesla Model 3"],
+    yRange: SHARED_Y_RANGE,
+    layout: "single",
+    // In the comparison view only, the Tesla forecast is replaced by the
+    // average of VW Golf and Kia Niro forecast endpoints so it trends up.
+    forecastOverrides: {
+      "Tesla Model 3": [
+        { date: "2023-01-15", price: 18517.96 },
+        { date: "2030-01-15", price: 27547.19 },
+      ],
+    },
+  },
+  tesla: {
+    title: "Price forecast Tesla Model 3",
+    subtitle: "Demo of our latest data model on realised and forecast prices",
+    models: ["Tesla Model 3"],
+    yRange: SHARED_Y_RANGE,
+    layout: "single",
+    forecastColors: {
+      "Tesla Model 3": "rgba(255,255,255,0.5)",
+    },
+  },
+  picanto: {
+    title: "Price forecast Kia Picanto",
+    subtitle: "Demo of our latest data model on realised and forecast prices",
+    models: ["Kia Picanto"],
+    yRange: [8000, 16000],
+    layout: "subplots",
+    etrRange: [0, 6],
+    stockRange: [0, 250],
+    forecastColors: {
+      "Kia Picanto": "rgba(255,255,255,0.5)",
+    },
+  },
+};
+let activeData = DATA;
+let activeView = VIEWS.comparison;
+
+function getActiveData(viewKey) {
+  const view = VIEWS[viewKey] || VIEWS.comparison;
+  return DATA.filter((m) => view.models.includes(m.label));
+}
+
+function getForecast(view, m) {
+  if (view.forecastOverrides && view.forecastOverrides[m.label]) {
+    return view.forecastOverrides[m.label];
+  }
+  return m.forecast;
+}
+
+function getForecastColor(view, m) {
+  if (view.forecastColors && view.forecastColors[m.label]) {
+    return view.forecastColors[m.label];
+  }
+  return hexToRgba(m.color, 0.5);
+}
+
 function buildTraces() {
   const traces = [];
   const todayDate = new Date(TODAY);
-  const hoverLabelStyle = {
-    bgcolor: "#474747",
-    bordercolor: "#474747",
-    font: { family: FONT_FAMILY, color: "#ffffff", size: 13 },
-  };
 
-  DATA.forEach((m) => {
-    const f = interpolateForecast(m.forecast);
-    const fAll = f;                            // full forecast for the visible dashed line
-    const fPost = f.filter(p => new Date(p.date) >= todayDate); // post-today for hover
+  activeData.forEach((m) => {
+    const baseForecast = getForecast(activeView, m);
+    const f = interpolateForecast(baseForecast);
+    const fAll = f;
+    const fPost = f.filter(p => new Date(p.date) >= todayDate);
 
-    // 1) Visible realised solid line — no hover here, a markers-only trace handles hover
+    // Draw the forecast line FIRST so the realised line is rendered on top
+    // (Plotly layers traces in array order — later traces appear in front).
+    if (fAll.length > 1) {
+      traces.push({
+        x: fAll.map(p => p.date),
+        y: fAll.map(p => p.price),
+        mode: "lines",
+        name: m.label + " forecast",
+        line: { color: getForecastColor(activeView, m), width: 2, dash: "dash" },
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+    }
+
     traces.push({
       x: m.solid.map(p => p.date),
       y: m.solid.map(p => p.price),
@@ -303,20 +446,6 @@ function buildTraces() {
       showlegend: false,
     });
 
-    // 2) Visible forecast dashed line — full range, no hover
-    if (fAll.length > 1) {
-      traces.push({
-        x: fAll.map(p => p.date),
-        y: fAll.map(p => p.price),
-        mode: "lines",
-        name: m.label + " forecast",
-        line: { color: hexToRgba(m.color, 0.5), width: 2, dash: "dash" },
-        hoverinfo: "skip",
-        showlegend: false,
-      });
-    }
-
-    // 3) HOVER trace for realised — invisible markers (hidden by CSS) used as hover hitbox
     traces.push({
       x: m.solid.map(p => p.date),
       y: m.solid.map(p => p.price),
@@ -328,7 +457,6 @@ function buildTraces() {
       showlegend: false,
     });
 
-    // 4) HOVER trace for forecast (post-today only)
     if (fPost.length > 1) {
       traces.push({
         x: fPost.map(p => p.date),
@@ -338,6 +466,56 @@ function buildTraces() {
         marker: { color: m.color, size: 12, symbol: "circle", opacity: 1 },
         hoverinfo: "x+y",
         meta: { kind: "forecast", color: m.color, label: m.label },
+        showlegend: false,
+      });
+    }
+
+    // Sub-chart traces (only present for models that carry ETR / stock data)
+    if (m.etr && m.etr.length) {
+      // visible line
+      traces.push({
+        x: m.etr.map(p => p.date),
+        y: m.etr.map(p => p.value),
+        mode: "lines",
+        line: { color: m.color, width: 1.8 },
+        xaxis: "x",
+        yaxis: "y2",
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+      // invisible hover markers
+      traces.push({
+        x: m.etr.map(p => p.date),
+        y: m.etr.map(p => p.value),
+        mode: "markers",
+        marker: { color: m.color, size: 12, symbol: "circle", opacity: 1 },
+        xaxis: "x",
+        yaxis: "y2",
+        hoverinfo: "x+y",
+        meta: { kind: "etr", color: m.color, label: m.label },
+        showlegend: false,
+      });
+    }
+    if (m.stock && m.stock.length) {
+      traces.push({
+        x: m.stock.map(p => p.date),
+        y: m.stock.map(p => p.value),
+        mode: "lines",
+        line: { color: m.color, width: 1.8 },
+        xaxis: "x",
+        yaxis: "y3",
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+      traces.push({
+        x: m.stock.map(p => p.date),
+        y: m.stock.map(p => p.value),
+        mode: "markers",
+        marker: { color: m.color, size: 12, symbol: "circle", opacity: 1 },
+        xaxis: "x",
+        yaxis: "y3",
+        hoverinfo: "x+y",
+        meta: { kind: "stock", color: m.color, label: m.label },
         showlegend: false,
       });
     }
@@ -351,11 +529,6 @@ const layout = {
   font: { family: FONT_FAMILY, color: FG, size: 12 },
   margin: { l: 64, r: 24, t: 48, b: 56 },
   hovermode: "x unified",
-  hoverlabel: {
-    bgcolor: "#474747",
-    bordercolor: "#474747",
-    font: { family: FONT_FAMILY, color: "#ffffff", size: 13 },
-  },
   showlegend: false,
   xaxis: {
     title: { text: "Date", font: { color: AXIS, family: FONT_FAMILY, size: 14 }, standoff: 14 },
@@ -372,6 +545,8 @@ const layout = {
     tickformat: "%Y",
     hoverformat: "%B %Y",
     dtick: "M12",
+    range: ["2022-12-01", "2030-06-01"],
+    autorange: false,
     minor: { showgrid: false },
     showspikes: false,
     zeroline: false,
@@ -393,32 +568,18 @@ const layout = {
     separatethousands: true,
     zeroline: false,
   },
-  shapes: [
-    {
-      type: "line",
-      xref: "x",
-      yref: "paper",
-      x0: TODAY,
-      x1: TODAY,
-      y0: 0,
-      y1: 1,
-      line: { color: "rgba(180,180,180,0.55)", width: 1 },
-    },
-  ],
-  annotations: [
-    {
-      x: TODAY,
-      xref: "x",
-      yref: "paper",
-      y: 1,
-      xshift: 10,
-      yshift: 18,
-      text: "Today",
-      showarrow: false,
-      font: { family: FONT_FAMILY, color: AXIS, size: 14 },
-      xanchor: "left",
-    },
-  ],
+  shapes: [{
+    type: "line", xref: "x", yref: "paper",
+    x0: TODAY, x1: TODAY, y0: 0, y1: 1,
+    line: { color: "rgba(180,180,180,0.55)", width: 1 },
+  }],
+  annotations: [{
+    x: TODAY, xref: "x", yref: "paper",
+    y: 1, xshift: 10, yshift: 18,
+    text: "Today", showarrow: false,
+    font: { family: FONT_FAMILY, color: AXIS, size: 14 },
+    xanchor: "left",
+  }],
 };
 
 const config = {
@@ -430,11 +591,145 @@ const config = {
   showAxisDragHandles: false,
 };
 
+function renderLegendModels() {
+  const wrap = document.getElementById("legendModels");
+  if (!wrap) return;
+  wrap.innerHTML = activeData.map((m) =>
+    '<span class="item"><span class="dot" style="background:' + m.color + '"></span>' + m.label + '</span>'
+  ).join("");
+}
+
+// Base annotation set (Today). The y-axis titles in subplot mode are added
+// dynamically below so they all sit at the same paper-x for visual alignment.
+const BASE_ANNOTATIONS = [{
+  x: TODAY, xref: "x", yref: "paper",
+  y: 1, xshift: 10, yshift: 18,
+  text: "Today", showarrow: false,
+  font: { family: FONT_FAMILY, color: AXIS, size: 14 },
+  xanchor: "left",
+}];
+
+function configureLayoutForView(view) {
+  // Main y-axis range
+  if (view.yRange) {
+    layout.yaxis.range = view.yRange;
+    layout.yaxis.autorange = false;
+  } else {
+    delete layout.yaxis.range;
+    layout.yaxis.autorange = true;
+  }
+  if (view.layout === "subplots") {
+    // Three stacked panels sharing one x-axis: main price (top), ETR, Stock count.
+    layout.yaxis.domain = [0.55, 1.0];
+    // Hide built-in y-axis title — we draw it as an annotation for alignment.
+    layout.yaxis.title = { text: "" };
+    const subAxisBase = {
+      anchor: "x",
+      showgrid: false,
+      showline: true,
+      linecolor: "rgba(180,180,180,0.55)",
+      linewidth: 1,
+      mirror: false,
+      ticks: "outside",
+      ticklen: 8,
+      tickwidth: 0,
+      tickcolor: "rgba(0,0,0,0)",
+      tickfont: { color: AXIS, family: FONT_FAMILY },
+      zeroline: false,
+      autorange: false,
+    };
+    layout.yaxis2 = Object.assign({}, subAxisBase, {
+      domain: [0.30, 0.48],
+      range: view.etrRange || [0, 6],
+    });
+    layout.yaxis3 = Object.assign({}, subAxisBase, {
+      domain: [0.0, 0.22],
+      range: view.stockRange || [0, 250],
+    });
+    layout.xaxis.anchor = "y3";
+
+    // Custom axis-title annotations aligned on the same paper-x.
+    const TITLE_X = -0.045;
+    const titleFont = { family: FONT_FAMILY, color: AXIS, size: 14 };
+    const mkTitle = (y, text) => ({
+      xref: "paper", yref: "paper",
+      x: TITLE_X, y: y,
+      text: text, showarrow: false,
+      textangle: -90,
+      xanchor: "center", yanchor: "middle",
+      font: titleFont,
+    });
+    layout.annotations = BASE_ANNOTATIONS.concat([
+      mkTitle(0.775, "Price (EUR)"),
+      mkTitle(0.39, "ETR"),
+      mkTitle(0.11, "Stock count"),
+    ]);
+  } else {
+    layout.yaxis.domain = [0.0, 1.0];
+    layout.yaxis.title = { text: "Price (EUR)", font: { color: AXIS, family: FONT_FAMILY, size: 14 }, standoff: 14 };
+    delete layout.yaxis2;
+    delete layout.yaxis3;
+    layout.xaxis.anchor = "y";
+    layout.annotations = BASE_ANNOTATIONS.slice();
+  }
+}
+
+function renderTitles(view) {
+  const titleEl = document.getElementById("pageTitle");
+  const subtitleEl = document.getElementById("pageSubtitle");
+  if (titleEl && view.title) titleEl.textContent = view.title;
+  if (subtitleEl && view.subtitle) subtitleEl.textContent = view.subtitle;
+}
+
+const fadeEls = () => Array.from(document.querySelectorAll(".view-fade"));
+let fadeTimer = null;
+
+function applyView(viewKey) {
+  const els = fadeEls();
+  els.forEach((el) => el.classList.add("is-fading"));
+  if (fadeTimer) clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(() => {
+    activeView = VIEWS[viewKey] || VIEWS.comparison;
+    activeData = getActiveData(viewKey);
+    renderTitles(activeView);
+    renderLegendModels();
+    configureLayoutForView(activeView);
+    Plotly.react("chart", buildTraces(), layout, config);
+    requestAnimationFrame(() => {
+      els.forEach((el) => el.classList.remove("is-fading"));
+    });
+  }, 140);
+}
+
+// Initial render: read the currently selected option (default = comparison).
+const graphPicker = document.getElementById("graphPicker");
+activeView = VIEWS[graphPicker.value] || VIEWS.comparison;
+activeData = getActiveData(graphPicker.value);
+renderTitles(activeView);
+renderLegendModels();
+configureLayoutForView(activeView);
+
 Plotly.newPlot("chart", buildTraces(), layout, config);
 window.addEventListener("resize", () => Plotly.Plots.resize(document.getElementById("chart")));
 
-// Custom HTML hover label — gives us full control over padding, rounded corners,
-// dot indicators, font weights, and outline.
+graphPicker.addEventListener("change", (e) => applyView(e.target.value));
+
+// Arrow key navigation cycles through dropdown options.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  const opts = Array.from(graphPicker.options);
+  const cur = opts.findIndex((o) => o.value === graphPicker.value);
+  if (cur < 0) return;
+  const step = e.key === "ArrowRight" ? 1 : -1;
+  const next = (cur + step + opts.length) % opts.length;
+  if (next === cur) return;
+  graphPicker.value = opts[next].value;
+  applyView(graphPicker.value);
+  e.preventDefault();
+});
+
 const chartEl = document.getElementById("chart");
 const customHover = document.getElementById("customHover");
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -457,32 +752,58 @@ function closestPt(arr, targetMs) {
 
 function showHover(eventData) {
   if (!eventData || !eventData.points || !eventData.points.length) return;
-  const xRaw = eventData.points[0].x;
+  const point = eventData.points[0];
+  const xRaw = point.x;
   const xMs = new Date(xRaw).getTime();
   const todayMs = new Date(TODAY).getTime();
   const isFuture = xMs > todayMs;
+  const kind = (point.data && point.data.meta && point.data.meta.kind) || "price";
 
-  const headerTag = isFuture ? "forecast value" : "realised value";
-  let html = '<div class="ch-header">' + fmtDate(xRaw) + ' (' + headerTag + ')</div>';
-  DATA.forEach((m) => {
-    let pt;
-    if (isFuture) {
-      const f = interpolateForecast(m.forecast).filter((p) => new Date(p.date).getTime() >= todayMs);
-      pt = closestPt(f, xMs);
-    } else {
-      pt = closestPt(m.solid, xMs);
-    }
-    if (!pt) return;
-    html += '<div class="ch-row">';
-    html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
-    html += m.label + " " + fmtEur(pt.price);
-    html += '</div>';
-  });
+  let html;
+  if (kind === "etr") {
+    html = '<div class="ch-header">' + fmtDate(xRaw) + '</div>';
+    activeData.forEach((m) => {
+      if (!m.etr) return;
+      const pt = closestPt(m.etr, xMs);
+      if (!pt) return;
+      html += '<div class="ch-row">';
+      html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
+      html += m.label + " ETR " + pt.value.toFixed(2);
+      html += '</div>';
+    });
+  } else if (kind === "stock") {
+    html = '<div class="ch-header">' + fmtDate(xRaw) + '</div>';
+    activeData.forEach((m) => {
+      if (!m.stock) return;
+      const pt = closestPt(m.stock, xMs);
+      if (!pt) return;
+      html += '<div class="ch-row">';
+      html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
+      html += m.label + " Stock count " + Math.round(pt.value);
+      html += '</div>';
+    });
+  } else {
+    const headerTag = isFuture ? "forecast value" : "realised value";
+    html = '<div class="ch-header">' + fmtDate(xRaw) + ' (' + headerTag + ')</div>';
+    activeData.forEach((m) => {
+      let pt;
+      if (isFuture) {
+        const f = interpolateForecast(getForecast(activeView, m)).filter((p) => new Date(p.date).getTime() >= todayMs);
+        pt = closestPt(f, xMs);
+      } else {
+        pt = closestPt(m.solid, xMs);
+      }
+      if (!pt) return;
+      html += '<div class="ch-row">';
+      html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
+      html += m.label + " " + fmtEur(pt.price);
+      html += '</div>';
+    });
+  }
 
   customHover.innerHTML = html;
   customHover.style.display = "block";
 
-  // Position the tooltip near the cursor, clamped inside the viewport.
   const evt = eventData.event;
   const pad = 16;
   const vw = window.innerWidth;
