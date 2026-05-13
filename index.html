@@ -774,7 +774,7 @@ function showHover(eventData) {
       if (!pt) return;
       html += '<div class="ch-row">';
       html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
-      html += m.label + " ETR " + pt.value.toFixed(2);
+      html += m.label + " " + pt.value.toFixed(2);
       html += '</div>';
     });
   } else if (kind === "stock") {
@@ -785,7 +785,7 @@ function showHover(eventData) {
       if (!pt) return;
       html += '<div class="ch-row">';
       html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
-      html += m.label + " Stock count " + Math.round(pt.value);
+      html += m.label + " " + Math.round(pt.value);
       html += '</div>';
     });
   } else {
