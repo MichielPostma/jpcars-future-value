@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Future value valuation comparison · JP.cars</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Realised and forecast prices in one chart — VW Golf, Kia Niro, Tesla Model 3.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    --bg: #000000;
+    --fg: #e6e6e6;
+    --muted: #9aa0a6;
+    --grid: rgba(255,255,255,0.10);
+    --axis: rgba(255,255,255,0.55);
+    --today: rgba(180,180,180,0.55);
+    --c1: #3DD958;
+    --c2: #009ad8;
+    --c3: #ffc200;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px clamp(16px, 4vw, 48px) 48px;
+  }
+  header.top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+  .titles { flex: 1; min-width: 0; }
+  h1 {
+    font-size: clamp(20px, 2.4vw, 28px);
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+  }
+  .subtitle {
+    font-size: clamp(13px, 1.4vw, 16px);
+    color: var(--muted);
+    margin: 0;
+    font-weight: 400;
+  }
+  .logo-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+  }
+  .jp-logo {
+    width: clamp(90px, 10vw, 140px);
+    height: auto;
+    display: block;
+  }
+  .chart {
+    position: relative;
+    width: 100%;
+    height: clamp(420px, 60vh, 640px);
+    background: transparent;
+  }
+  .chart::before {
+    content: "";
+    position: absolute;
+    top: 48px;
+    right: 24px;
+    bottom: 56px;
+    left: 64px;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g stroke='white' stroke-opacity='0.10' stroke-width='1' fill='none'><line x1='0' y1='0' x2='100' y2='0'/><line x1='0' y1='0' x2='0' y2='100'/><line x1='20' y1='0' x2='20' y2='100'/><line x1='40' y1='0' x2='40' y2='100'/><line x1='60' y1='0' x2='60' y2='100'/><line x1='80' y1='0' x2='80' y2='100'/><line x1='0' y1='20' x2='100' y2='20'/><line x1='0' y1='40' x2='100' y2='40'/><line x1='0' y1='60' x2='100' y2='60'/><line x1='0' y1='80' x2='100' y2='80'/></g><circle cx='50' cy='50' r='0.5' fill='white' fill-opacity='0.40'/></svg>");
+    background-repeat: repeat;
+    background-size: 100px 100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .chart > .js-plotly-plot {
+    position: relative;
+    z-index: 1;
+  }
+  .legend {
+    margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    padding-left: 4px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 400;
+    font-size: clamp(13px, 1.2vw, 15px);
+    color: #ffffff;
+  }
+  .legend .models {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 28px;
+  }
+  .legend .style-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    color: #ffffff;
+  }
+  .legend .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .legend .dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex: 0 0 12px;
+  }
+  .legend .line-sample {
+    display: inline-block;
+    width: 26px;
+    height: 0;
+    border-top: 2px solid #ffffff;
+  }
+  .legend .line-sample.dashed {
+    border-top-style: dashed;
+  }
+  @media (max-width: 540px) {
+    header.top { flex-direction: row; align-items: center; }
+    .jp-logo { width: 80px; }
+    .legend { gap: 12px 20px; }
+  }
+  /* Custom hover label — replaces Plotly's built in tooltip */
+  .ch-hover {
+    position: absolute;
+    background: #474747;
+    color: #ffffff;
+    padding: 14px 18px;
+    border-radius: 6px;
+    border: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+    display: none;
+  }
+  .ch-hover .ch-header {
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.005em;
+  }
+  .ch-hover .ch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 0;
+  }
+  .ch-hover .ch-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 7px;
+  }
+  /* Plotly's own hover label is disabled in favour of our custom one. */
+  .chart .hoverlayer { display: none !important; }
+  /* Hide the invisible markers used as hover triggers. */
+  .chart .scatterlayer .points path { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="titles">
+      <h1>Future value valuation comparison</h1>
+      <p class="subtitle">Realised and forecast prices in one chart</p>
+    </div>
+    <div class="logo-wrap"><svg class="jp-logo" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 60 15">
+  <!-- Generator: Adobe Illustrator 29.5.0, SVG Export Plug-In . SVG Version: 2.1.0 Build 137)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #fff;
+      }
+
+      .st1 {
+        fill: #3cd958;
+      }
+    </style>
+  </defs>
+  <g>
+    <path class="st0" d="M31.27,3.47v4.94c0,.32-.05.61-.15.87-.1.26-.25.48-.45.67-.2.18-.44.33-.72.43-.28.1-.6.15-.96.15s-.65-.05-.91-.14c-.26-.09-.49-.23-.68-.4-.19-.17-.34-.38-.46-.62-.12-.24-.2-.5-.25-.8l1.41-.28c.11.6.4.91.87.91.22,0,.41-.07.56-.21s.23-.36.23-.66v-3.65h0v-1.21h1.51Z"/>
+    <path class="st0" d="M32.76,10.42V3.47h3.29c.33,0,.62.05.88.16s.48.26.66.45c.18.19.32.43.42.7.1.28.15.58.15.9s-.05.63-.15.91c-.1.27-.24.5-.42.7-.18.19-.4.34-.66.45s-.55.16-.88.16h-1.77v2.51h-1.51ZM34.28,6.6h1.59c.23,0,.4-.06.53-.17.13-.12.19-.29.19-.51v-.44c0-.23-.06-.4-.19-.51-.13-.12-.31-.17-.53-.17h-1.59v1.81Z"/>
+    <path class="st0" d="M39.08,10.53c-.3,0-.52-.07-.66-.22-.14-.15-.21-.34-.21-.57v-.2c0-.23.07-.42.21-.57.14-.15.36-.22.66-.22s.52.07.66.22c.14.15.21.34.21.57v.2c0,.23-.07.42-.21.57-.14.15-.36.22-.66.22Z"/>
+    <path class="st0" d="M43.27,10.54c-.39,0-.74-.06-1.05-.19s-.56-.31-.77-.55-.36-.52-.47-.86c-.11-.34-.16-.72-.16-1.13s.05-.79.16-1.13c.11-.33.26-.62.47-.86s.46-.42.77-.55.65-.19,1.05-.19c.53,0,.97.12,1.33.36.35.24.61.57.76,1.01l-1.19.52c-.05-.2-.14-.37-.29-.51-.15-.14-.35-.21-.61-.21-.3,0-.52.1-.68.29-.15.2-.23.46-.23.79v.98c0,.33.08.59.23.79s.38.29.68.29c.27,0,.48-.07.63-.21.16-.14.27-.33.34-.56l1.15.5c-.17.5-.44.86-.8,1.1-.36.23-.8.35-1.32.35Z"/>
+    <path class="st0" d="M50.16,10.42c-.27,0-.49-.08-.66-.25-.18-.17-.29-.39-.33-.67h-.06c-.08.34-.26.6-.53.77s-.61.26-1.01.26c-.52,0-.93-.14-1.2-.42-.28-.28-.42-.65-.42-1.1,0-.55.2-.96.6-1.23.4-.27.95-.4,1.64-.4h.83v-.33c0-.25-.07-.45-.2-.6-.13-.15-.36-.22-.67-.22-.29,0-.52.06-.7.19-.17.13-.32.27-.43.43l-.88-.78c.21-.31.48-.56.8-.74.32-.18.76-.27,1.31-.27.74,0,1.3.16,1.67.49s.56.8.56,1.42v2.29h.49v1.14h-.82ZM48.12,9.52c.25,0,.46-.05.63-.16.18-.11.26-.28.26-.51v-.61h-.72c-.58,0-.87.19-.87.58v.15c0,.19.06.33.18.42.12.09.29.13.51.13Z"/>
+    <path class="st0" d="M51.97,10.42v-5.23h1.47v1.13h.05c.03-.15.07-.29.14-.42.07-.14.15-.26.26-.36.11-.11.24-.19.39-.25s.33-.09.54-.09h.26v1.37h-.37c-.43,0-.75.06-.96.17-.21.11-.31.32-.31.63v3.06h-1.47Z"/>
+    <path class="st0" d="M57.76,10.54c-.5,0-.93-.08-1.27-.24-.34-.16-.65-.39-.93-.69l.87-.88c.19.21.39.37.62.49.23.12.48.18.77.18s.49-.04.61-.13.17-.21.17-.36c0-.25-.18-.39-.53-.44l-.57-.07c-1.17-.15-1.76-.68-1.76-1.61,0-.25.05-.48.14-.69s.23-.39.41-.54.39-.27.64-.35.53-.12.84-.12c.27,0,.51.02.72.05.21.04.39.09.56.16.16.07.31.16.45.26.14.1.27.22.4.34l-.85.87c-.17-.17-.35-.3-.56-.39-.21-.1-.42-.14-.64-.14-.25,0-.43.04-.54.12-.11.08-.16.19-.16.32,0,.14.04.25.11.32.08.08.22.13.43.16l.59.08c1.15.15,1.72.68,1.72,1.57,0,.25-.05.48-.16.7s-.26.4-.45.55c-.2.16-.43.28-.71.36s-.58.13-.92.13Z"/>
+  </g>
+  <path class="st1" d="M15.45,0s-4.35,7.37-5.95,10.4c-1.07,2.01-3.05,4.03-5.88,3.99-1.23-.02-2.77-.54-3.62-1.29l1.58-2.79c.99.85,3.43.95,4.32-.42s4.02-6.81,4.02-6.81h-4.16L7.56.09c-.09,0,7.89-.09,7.89-.09ZM18.51,5.85l-2.19,3.29h-3.65l-1.59,2.8h7.02l4.17-5.98L17.85.41l-1.76,2.91,2.41,2.52Z"/>
+</svg></div>
+  </header>
+
+  <div id="chart" class="chart" role="img" aria-label="Future value comparison chart"></div>
+  <div id="customHover" class="ch-hover" aria-hidden="true"></div>
+
+  <div class="legend" aria-label="Legend">
+    <div class="models">
+      <span class="item"><span class="dot" style="background:#3DD958"></span>Volkswagen Golf Petrol</span>
+      <span class="item"><span class="dot" style="background:#009ad8"></span>Kia Niro Hybrid</span>
+      <span class="item"><span class="dot" style="background:#ffc200"></span>Tesla Model 3</span>
+    </div>
+    <div class="style-hint">
+      <span class="item"><span class="line-sample"></span>Realised</span>
+      <span class="item"><span class="line-sample dashed"></span>Forecast</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [{"label": "Volkswagen Golf Petrol", "color": "#3DD958", "solid": [{"date": "2023-01-15", "price": 19350.70967288543}, {"date": "2023-02-15", "price": 19318.115889200864}, {"date": "2023-03-15", "price": 19358.466982745413}, {"date": "2023-04-15", "price": 19378.073253578248}, {"date": "2023-05-15", "price": 19027.721287502256}, {"date": "2023-06-15", "price": 19485.726606053027}, {"date": "2023-07-15", "price": 19436.7023560199}, {"date": "2023-08-15", "price": 19822.587460203733}, {"date": "2023-09-15", "price": 20285.02571293634}, {"date": "2023-10-15", "price": 20376.269324401306}, {"date": "2023-11-15", "price": 20698.4099371969}, {"date": "2023-12-15", "price": 21046.737683386054}, {"date": "2024-01-15", "price": 21171.055589348718}, {"date": "2024-02-15", "price": 21410.36358736898}, {"date": "2024-03-15", "price": 21635.663212717012}, {"date": "2024-04-15", "price": 21934.327694479576}, {"date": "2024-05-15", "price": 22390.78024544087}, {"date": "2024-06-15", "price": 22905.84120075426}, {"date": "2024-07-15", "price": 23578.03137291018}, {"date": "2024-08-15", "price": 23788.048805358634}, {"date": "2024-09-15", "price": 23859.92648902788}, {"date": "2024-10-15", "price": 23949.9413381751}, {"date": "2024-11-15", "price": 23835.776280245478}, {"date": "2024-12-15", "price": 23810.42406627696}, {"date": "2025-01-15", "price": 23726.947025121808}, {"date": "2025-02-15", "price": 23801.641409585423}, {"date": "2025-03-15", "price": 24089.06201123527}, {"date": "2025-04-15", "price": 24378.24562035173}, {"date": "2025-05-15", "price": 24395.462938884877}, {"date": "2025-06-15", "price": 24273.246498411692}, {"date": "2025-07-15", "price": 24333.71005312399}, {"date": "2025-08-15", "price": 24337.155876099154}, {"date": "2025-09-15", "price": 24175.938373066077}, {"date": "2025-10-15", "price": 24285.846019344564}, {"date": "2025-11-15", "price": 24140.88660878389}, {"date": "2025-12-15", "price": 24161.283224058192}, {"date": "2026-01-15", "price": 24161.79719502443}, {"date": "2026-02-15", "price": 23816.399298347555}, {"date": "2026-03-15", "price": 23993.795655276608}, {"date": "2026-04-15", "price": 23992.89175873626}], "forecast": [{"date": "2023-01-15", "price": 19444.94476981887}, {"date": "2030-01-15", "price": 32381.078827455298}]}, {"label": "Kia Niro Hybrid", "color": "#009ad8", "solid": [{"date": "2023-01-15", "price": 17720.067132474876}, {"date": "2023-02-15", "price": 17966.782341850674}, {"date": "2023-03-15", "price": 18084.899817384314}, {"date": "2023-04-15", "price": 17999.98907189216}, {"date": "2023-05-15", "price": 18130.992115939476}, {"date": "2023-06-15", "price": 18127.571539296165}, {"date": "2023-07-15", "price": 18080.890839231768}, {"date": "2023-08-15", "price": 18220.800869246403}, {"date": "2023-09-15", "price": 18363.78334584906}, {"date": "2023-10-15", "price": 18429.587681354984}, {"date": "2023-11-15", "price": 18496.19487301699}, {"date": "2023-12-15", "price": 18516.40064971114}, {"date": "2024-01-15", "price": 18315.097314164337}, {"date": "2024-02-15", "price": 18274.636588380105}, {"date": "2024-03-15", "price": 18216.3425143054}, {"date": "2024-04-15", "price": 18358.05730820998}, {"date": "2024-05-15", "price": 18496.786178644124}, {"date": "2024-06-15", "price": 18525.50634624657}, {"date": "2024-07-15", "price": 18592.95207549542}, {"date": "2024-08-15", "price": 18597.50941271061}, {"date": "2024-09-15", "price": 18469.004898241357}, {"date": "2024-10-15", "price": 18413.595771303695}, {"date": "2024-11-15", "price": 18409.500102083668}, {"date": "2024-12-15", "price": 18373.867664768015}, {"date": "2025-01-15", "price": 18454.981141892993}, {"date": "2025-02-15", "price": 18554.92475544713}, {"date": "2025-03-15", "price": 18570.40383918262}, {"date": "2025-04-15", "price": 18599.959937228847}, {"date": "2025-05-15", "price": 18657.602613347786}, {"date": "2025-06-15", "price": 18699.971264874086}, {"date": "2025-07-15", "price": 18738.552365009964}, {"date": "2025-08-15", "price": 19041.44392008283}, {"date": "2025-09-15", "price": 19319.145054145443}, {"date": "2025-10-15", "price": 19440.17696963179}, {"date": "2025-11-15", "price": 19638.478573156754}, {"date": "2025-12-15", "price": 20803.196212743875}, {"date": "2026-01-15", "price": 21114.69229035145}, {"date": "2026-02-15", "price": 21535.753181820804}, {"date": "2026-03-15", "price": 20363.82291390262}, {"date": "2026-04-15", "price": 20489.906504123053}], "forecast": [{"date": "2023-01-15", "price": 17590.98440704939}, {"date": "2030-01-15", "price": 22713.309975470525}]}, {"label": "Tesla Model 3", "color": "#ffc200", "solid": [{"date": "2023-07-15", "price": 22934.33333950896}, {"date": "2023-08-15", "price": 22486.814197838303}, {"date": "2023-09-15", "price": 22395.779827525315}, {"date": "2023-10-15", "price": 22429.830890562283}, {"date": "2023-11-15", "price": 22092.732160442814}, {"date": "2023-12-15", "price": 21925.337882129505}, {"date": "2024-01-15", "price": 21285.41244986117}, {"date": "2024-02-15", "price": 20950.025808848146}, {"date": "2024-03-15", "price": 20585.27788965736}, {"date": "2024-04-15", "price": 19941.73032959156}, {"date": "2024-05-15", "price": 19358.71884109534}, {"date": "2024-06-15", "price": 18542.369032640225}, {"date": "2024-07-15", "price": 18436.072902273245}, {"date": "2024-08-15", "price": 18979.176107338015}, {"date": "2024-09-15", "price": 19303.326813148808}, {"date": "2024-10-15", "price": 19565.25867346161}, {"date": "2024-11-15", "price": 19496.10983327464}, {"date": "2024-12-15", "price": 19527.621547526007}, {"date": "2025-01-15", "price": 19572.01750462885}, {"date": "2025-02-15", "price": 19701.929142192213}, {"date": "2025-03-15", "price": 20033.438310886577}, {"date": "2025-04-15", "price": 19820.784042383675}, {"date": "2025-05-15", "price": 19817.353343784176}, {"date": "2025-06-15", "price": 19901.759802897795}, {"date": "2025-07-15", "price": 19993.546559214807}, {"date": "2025-08-15", "price": 20332.364588055225}, {"date": "2025-09-15", "price": 20741.9247787713}, {"date": "2025-10-15", "price": 21058.01983860488}, {"date": "2025-11-15", "price": 21169.370664104845}, {"date": "2025-12-15", "price": 21246.06680785309}, {"date": "2026-01-15", "price": 21387.718270550446}, {"date": "2026-02-15", "price": 21395.798257015835}, {"date": "2026-03-15", "price": 21481.178279615124}, {"date": "2026-04-15", "price": 21822.919921046807}], "forecast": [{"date": "2023-07-15", "price": 20914.613054105015}, {"date": "2030-01-15", "price": 19331.710084948438}]}];
+const FONT_FAMILY = "IBM Plex Sans, system-ui, -apple-system, sans-serif";
+const BG = "#000000";
+const GRID = "rgba(255,255,255,0.10)";
+const AXIS = "rgba(255,255,255,0.55)";
+const FG = "#cfd2d6";
+const TODAY = "2026-05-13";
+
+function hexToRgba(hex, a) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0,2), 16);
+  const g = parseInt(h.substring(2,4), 16);
+  const b = parseInt(h.substring(4,6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// Linearly interpolate a sparse forecast (2 endpoints) into monthly points
+// so hover detection works anywhere along the line.
+function interpolateForecast(points) {
+  if (points.length < 2) return points;
+  const start = new Date(points[0].date);
+  const end = new Date(points[points.length - 1].date);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  const yStart = points[0].price;
+  const yEnd = points[points.length - 1].price;
+  const out = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const t = (cursor.getTime() - startMs) / (endMs - startMs);
+    const y = yStart + (yEnd - yStart) * t;
+    const iso = cursor.toISOString().slice(0, 10);
+    out.push({ date: iso, price: y });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  // ensure last endpoint is included
+  if (out[out.length - 1].date !== points[points.length - 1].date) {
+    out.push(points[points.length - 1]);
+  }
+  return out;
+}
+
+function buildTraces() {
+  const traces = [];
+  const todayDate = new Date(TODAY);
+  const hoverLabelStyle = {
+    bgcolor: "#474747",
+    bordercolor: "#474747",
+    font: { family: FONT_FAMILY, color: "#ffffff", size: 13 },
+  };
+
+  DATA.forEach((m) => {
+    const f = interpolateForecast(m.forecast);
+    const fAll = f;                            // full forecast for the visible dashed line
+    const fPost = f.filter(p => new Date(p.date) >= todayDate); // post-today for hover
+
+    // 1) Visible realised solid line — no hover here, a markers-only trace handles hover
+    traces.push({
+      x: m.solid.map(p => p.date),
+      y: m.solid.map(p => p.price),
+      mode: "lines",
+      name: m.label,
+      line: { color: m.color, width: 2.5 },
+      hoverinfo: "skip",
+      showlegend: false,
+    });
+
+    // 2) Visible forecast dashed line — full range, no hover
+    if (fAll.length > 1) {
+      traces.push({
+        x: fAll.map(p => p.date),
+        y: fAll.map(p => p.price),
+        mode: "lines",
+        name: m.label + " forecast",
+        line: { color: hexToRgba(m.color, 0.5), width: 2, dash: "dash" },
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+    }
+
+    // 3) HOVER trace for realised — invisible markers (hidden by CSS) used as hover hitbox
+    traces.push({
+      x: m.solid.map(p => p.date),
+      y: m.solid.map(p => p.price),
+      mode: "markers",
+      name: "",
+      marker: { color: m.color, size: 12, symbol: "circle", opacity: 1 },
+      hoverinfo: "x+y",
+      meta: { kind: "realized", color: m.color, label: m.label },
+      showlegend: false,
+    });
+
+    // 4) HOVER trace for forecast (post-today only)
+    if (fPost.length > 1) {
+      traces.push({
+        x: fPost.map(p => p.date),
+        y: fPost.map(p => p.price),
+        mode: "markers",
+        name: "",
+        marker: { color: m.color, size: 12, symbol: "circle", opacity: 1 },
+        hoverinfo: "x+y",
+        meta: { kind: "forecast", color: m.color, label: m.label },
+        showlegend: false,
+      });
+    }
+  });
+  return traces;
+}
+
+const layout = {
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor: "rgba(0,0,0,0)",
+  font: { family: FONT_FAMILY, color: FG, size: 12 },
+  margin: { l: 64, r: 24, t: 48, b: 56 },
+  hovermode: "x unified",
+  hoverlabel: {
+    bgcolor: "#474747",
+    bordercolor: "#474747",
+    font: { family: FONT_FAMILY, color: "#ffffff", size: 13 },
+  },
+  showlegend: false,
+  xaxis: {
+    title: { text: "Date", font: { color: AXIS, family: FONT_FAMILY, size: 14 }, standoff: 14 },
+    showgrid: false,
+    showline: true,
+    linecolor: "rgba(180,180,180,0.55)",
+    linewidth: 1,
+    mirror: false,
+    ticks: "outside",
+    ticklen: 8,
+    tickwidth: 0,
+    tickcolor: "rgba(0,0,0,0)",
+    tickfont: { color: AXIS, family: FONT_FAMILY },
+    tickformat: "%Y",
+    hoverformat: "%B %Y",
+    dtick: "M12",
+    minor: { showgrid: false },
+    showspikes: false,
+    zeroline: false,
+  },
+  yaxis: {
+    title: { text: "Price (EUR)", font: { color: AXIS, family: FONT_FAMILY, size: 14 }, standoff: 14 },
+    showgrid: false,
+    showline: true,
+    linecolor: "rgba(180,180,180,0.55)",
+    linewidth: 1,
+    mirror: false,
+    ticks: "outside",
+    ticklen: 8,
+    tickwidth: 0,
+    tickcolor: "rgba(0,0,0,0)",
+    tickfont: { color: AXIS, family: FONT_FAMILY },
+    dtick: 2000,
+    minor: { showgrid: false },
+    separatethousands: true,
+    zeroline: false,
+  },
+  shapes: [
+    {
+      type: "line",
+      xref: "x",
+      yref: "paper",
+      x0: TODAY,
+      x1: TODAY,
+      y0: 0,
+      y1: 1,
+      line: { color: "rgba(180,180,180,0.55)", width: 1 },
+    },
+  ],
+  annotations: [
+    {
+      x: TODAY,
+      xref: "x",
+      yref: "paper",
+      y: 1,
+      xshift: 10,
+      yshift: 18,
+      text: "Today",
+      showarrow: false,
+      font: { family: FONT_FAMILY, color: AXIS, size: 14 },
+      xanchor: "left",
+    },
+  ],
+};
+
+const config = {
+  displayModeBar: false,
+  responsive: true,
+  staticPlot: false,
+  scrollZoom: false,
+  doubleClick: false,
+  showAxisDragHandles: false,
+};
+
+Plotly.newPlot("chart", buildTraces(), layout, config);
+window.addEventListener("resize", () => Plotly.Plots.resize(document.getElementById("chart")));
+
+// Custom HTML hover label — gives us full control over padding, rounded corners,
+// dot indicators, font weights, and outline.
+const chartEl = document.getElementById("chart");
+const customHover = document.getElementById("customHover");
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function fmtDate(s) {
+  const d = new Date(s);
+  return MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+function fmtEur(n) {
+  return "€ " + Math.round(n).toLocaleString("en-US");
+}
+function closestPt(arr, targetMs) {
+  let best = null, bestDelta = Infinity;
+  for (const p of arr) {
+    const delta = Math.abs(new Date(p.date).getTime() - targetMs);
+    if (delta < bestDelta) { best = p; bestDelta = delta; }
+  }
+  return best;
+}
+
+function showHover(eventData) {
+  if (!eventData || !eventData.points || !eventData.points.length) return;
+  const xRaw = eventData.points[0].x;
+  const xMs = new Date(xRaw).getTime();
+  const todayMs = new Date(TODAY).getTime();
+  const isFuture = xMs > todayMs;
+
+  const headerTag = isFuture ? "forecast value" : "realised value";
+  let html = '<div class="ch-header">' + fmtDate(xRaw) + ' (' + headerTag + ')</div>';
+  DATA.forEach((m) => {
+    let pt;
+    if (isFuture) {
+      const f = interpolateForecast(m.forecast).filter((p) => new Date(p.date).getTime() >= todayMs);
+      pt = closestPt(f, xMs);
+    } else {
+      pt = closestPt(m.solid, xMs);
+    }
+    if (!pt) return;
+    html += '<div class="ch-row">';
+    html += '<span class="ch-dot" style="background:' + m.color + '"></span>';
+    html += m.label + " " + fmtEur(pt.price);
+    html += '</div>';
+  });
+
+  customHover.innerHTML = html;
+  customHover.style.display = "block";
+
+  // Position the tooltip near the cursor, clamped inside the viewport.
+  const evt = eventData.event;
+  const pad = 16;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = customHover.offsetWidth;
+  const h = customHover.offsetHeight;
+  let left = evt.pageX + pad;
+  let top = evt.pageY + pad;
+  if (left + w + 8 > window.scrollX + vw) left = evt.pageX - w - pad;
+  if (top + h + 8 > window.scrollY + vh) top = evt.pageY - h - pad;
+  customHover.style.left = left + "px";
+  customHover.style.top = top + "px";
+}
+
+function hideHover() {
+  customHover.style.display = "none";
+}
+
+chartEl.on("plotly_hover", showHover);
+chartEl.on("plotly_unhover", hideHover);
+chartEl.addEventListener("mouseleave", hideHover);
+</script>
+</body>
+</html>
